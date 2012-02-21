@@ -12,12 +12,26 @@ public var minRhoOutput : float = -0.4; //min value for OSCulator
 public var maxRhoOutput : float = 0.4; //max value from OSCulator
 public var someObject : Transform;
 public var nameFile: String;
-public var triggerEye : float = 0.1;
-private var i : int = 0;
+
+public var hThresh : float = 5.5;
+public var lThresh : float = 3.5;
+private var leftEye : float;
+private var rightEye : float;
+private var leftEyeBrow : float;
+private var rightEyeBrow : float;
+public var snapshot : boolean = true;
+public var rightEyeRec : boolean;
+public var leftEyeRec : boolean;
+public var rightEyeBrowRec : boolean;
+public var leftEyeBrowRec : boolean;
+private var fileCounter : int = 0;
 
 function Start ()
 {
-	
+	    rightEyeRec= false;
+        leftEyeRec = false;
+		rightEyeBrowRec = false;
+		leftEyeBrowRec = false;
 }
 
 function Update ()
@@ -26,7 +40,6 @@ function Update ()
 
 function OSCMessageReceived(message : OSC.NET.OSCMessage)
 {
-        
         if(message.Address == "/pose/position")
         {        
                	if(message.Values.Count == 2)
@@ -70,17 +83,10 @@ function OSCMessageReceived(message : OSC.NET.OSCMessage)
         }
         else if(message.Address == "/eye/left")
         {
-                if(message.Values.Count == 1)
+				if(message.Values.Count == 1)
                 {
-		                if(message.Values[0] < triggerEye)
-                        {
-                        	Debug.Log("left eye closed");
-                        	nameFile = "capture";
-                        	nameFile += i;
-                        	nameFile += ".png";
-                        	i ++;
-                        	Application.CaptureScreenshot(nameFile);
-                        }     			 	
+		        	leftEye = message.Values[0];   
+        			leftEyeRec = true;     			 	
                 }
                 else
                 {
@@ -91,21 +97,79 @@ function OSCMessageReceived(message : OSC.NET.OSCMessage)
         {
                 if(message.Values.Count == 1)
                 {
-		                if(message.Values[0] < triggerEye)
-                        {
-                        	Debug.Log("right eye closed");
-                        	nameFile = "capture";
-                        	nameFile += i;
-                        	nameFile += ".png";
-                        	i++;
-                        	Application.CaptureScreenshot(nameFile);
-                        }     			 	
+		        	rightEye = message.Values[0]; 
+		        	rightEyeRec = true;            			 	
                 }
                 else
                 {
                         Debug.LogError("/eye/right has the wrong number of args");
                 }
         }
+        else if(message.Address == "/eyebrow/left")
+        {
+				if(message.Values.Count == 1)
+                {
+		        	leftEyeBrow = message.Values[0];  
+		        	leftEyeBrowRec = true;          			 	
+                }
+                else
+                {
+                        Debug.LogError("/eyebrow/left has the wrong number of args");
+                }
+        }
+        else if(message.Address == "/eyebrow/right")
+        {
+                if(message.Values.Count == 1)
+                {
+		        	rightEyeBrow = message.Values[0]; 
+		        	rightEyeBrowRec = true;            			 	
+                }
+                else
+                {
+                        Debug.LogError("/eyebrow/right has the wrong number of args");
+                }
+        }
+	if(rightEyeRec && leftEyeRec && rightEyeBrowRec && leftEyeBrowRec)
+	{
+		if(snapshot == true)
+		{
+			Debug.Log(Mathf.Abs(rightEye-rightEyeBrow));
+			Debug.Log(Mathf.Abs(leftEye-leftEyeBrow));
+			if(Mathf.Abs(rightEye-rightEyeBrow)<lThresh)
+			{
+				Debug.Log("right eye closed");
+				nameFile = "capture";
+				nameFile += fileCounter;
+				nameFile += ".png";
+				fileCounter++;
+				Application.CaptureScreenshot(nameFile);
+				snapshot = false;
+			}
+			else if(Mathf.Abs(leftEye-leftEyeBrow)<lThresh)
+			{
+				Debug.Log("left eye closed");
+				nameFile = "capture";
+				nameFile += fileCounter;
+				nameFile += ".png";
+				fileCounter++;
+				Application.CaptureScreenshot(nameFile);
+				snapshot = false;
+			}
+		}
+		else
+		{
+			if(Mathf.Abs(rightEye-rightEyeBrow)>hThresh)
+			{
+				Debug.Log("right eye open");
+				snapshot = true;
+			}
+			else if(Mathf.Abs(leftEye-leftEyeBrow)>hThresh)
+			{
+				Debug.Log("left eye open");
+				snapshot = true;
+			}
+		}
+	}
 }
 
 function Map(value : float, inputMin : float, inputMax : float, outputMin : float, outputMax : float , clamp : boolean) : float
